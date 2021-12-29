@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  std / sha1, json
+  algorithm, os, osproc, strutils, parseopt, parsecfg, strtabs, streams,
+  debcreation, std / sha1, json, times, sequtils, sugar
 
 const
   maxOS = 20 # max number of OSes
@@ -672,6 +672,33 @@ proc setupDist2(c: var ConfigData) =
     else:
       quit("External program failed")
 
+type
+  TarKind {.pure.} = enum
+    ## The type of the `tar` tool
+    Invalid    ## Not a tool that is supported
+    GNU        ## GNU tar
+    Libarchive ## libarchive-based tar utility
+
+proc detectTar(): (string, TarKind) =
+  ## Detect the tar utility and its type
+  const Candidates = [
+    "gtar",  # GNU tar on BSD-like platform
+    "tar",   # The regular name for the tar utility, type depends on platform
+    "bsdtar" # The libarchive tar utility
+  ]
+
+  for candidate in Candidates.items:
+    try:
+      let output = execProcess(candidate, args = ["--version"], options = {poUsePath})
+      if output.len > 0:
+        if "GNU tar" in output:
+          return (candidate, GNU)
+
+        if "libarchive" in output:
+          return (candidate, Libarchive)
+    except OSError:
+      discard "Ignore errors when the tool is not available"
+
 proc archiveDist(c: var ConfigData) =
   ## Create the archive distribution
   let proj = toLowerAscii(c.name) & "-" & c.version
@@ -749,22 +776,85 @@ proc archiveDist(c: var ConfigData) =
   let oldDir = getCurrentDir()
   setCurrentDir(tmpDir)
   try:
+    # Timestamp to set the files to. This make sure that the created archive
+    # is deterministic with regards to creation time.
+    let timestamp =
+      try:
+        parse(c.commitdate, "yyyy-MM-dd", utc()).toTime()
+      except TimeParseError:
+        # If no time is provided, use epoch 0
+        fromUnix(0)
+
+    const AvoidFragments = [
+      DirSep & ".DS_Store", # macOS directory metadata
+      DirSep & "__MACOSX"   # macOS resource forks
+    ]
+      ## Path fragments to avoid packaging
+
+    # Set the time of every file/directories to be archived to the
+    # deterministic timestamp
+    for path in walkDirRec(proj, {pcFile, pcDir}, checkDir = true):
+      if AvoidFragments.allIt(it notin path):
+        setLastModificationTime(path, timestamp)
+
+    # Collect all files to be archived
+    var paths = collect(newSeq):
+      for path in walkDirRec(proj, checkDir = true):
+        if AvoidFragments.allIt(it in path):
+          continue
+
+        path
+
+    # Sort the list alphabetically. This ensure that the file system ordering
+    # has no bearing on the creation of the archive.
+    paths.sort()
+
     case c.format
     of Zip:
-      if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
-        echo("External program failed (zip)")
+      # Write the list into a file then pass it to 7-zip since Windows has a
+      # very small command line length limit
+      let fileList = proj & ".files.txt"
+      writeFile(fileList, paths.join("\p"))
+
+      if execShellCmd("7z a -tzip $1.zip @$2" % [proj, quoteShell(fileList)]) != 0:
+        quit("External program failed (zip)")
 
     of tarFormats:
-      if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
-                      proj) != 0:
-        # try old 'tar' without --exclude feature:
-        if execShellCmd("tar cf $1.tar $1" % proj) != 0:
-          echo("External program failed")
+      let (tar, kind) = detectTar()
+
+      # The command to create a tar archive
+      var tarCmd = tar
+
+      tarCmd.add " "
+      tarCmd.add:
+        # The parameters to make tar generates deterministic archives, per
+        #
+        # https://reproducible-builds.org/docs/archives/
+        case kind
+        of Invalid:
+          echo "The tar utility does not exist or is a version not supported by this utility"
+          return
+        of GNU:
+          quoteShellCommand ["--owner=0", "--group=0", "--numeric-owner", "--format=gnu"]
+        of Libarchive:
+          quoteShellCommand ["--uid=0", "--gid=0", "--numeric-owner", "--format=gnutar"]
+
+      # Add creation action
+      tarCmd.add " -cf"
+
+      # Add target file name
+      tarCmd.add " " & proj & ".tar"
+
+      # Add the list of files
+      tarCmd.add " " & quoteShellCommand(paths)
+
+      if execShellCmd(tarCmd) != 0:
+        quit("External program failed")
 
       case c.format
       of TarXz:
         if execShellCmd("xz -9f $1.tar" % proj) != 0:
-          echo("External program failed")
+          quit("External program failed")
       else:
         discard
 
