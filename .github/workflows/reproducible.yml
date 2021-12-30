@@ -26,6 +26,8 @@ jobs:
     #               varies based on outside environment.
 
     strategy:
+      fail-fast: false
+
       matrix:
         test:
           - name: Source archive
