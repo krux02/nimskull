@@ -826,16 +826,30 @@ proc archiveDist(c: var ConfigData) =
         # If no time is provided, use epoch 0
         fromUnix(0)
 
-    const AvoidFragments = [
-      DirSep & ".DS_Store", # macOS directory metadata
-      DirSep & "__MACOSX"   # macOS resource forks
-    ]
-      ## Path fragments to avoid packaging
+    const
+      AvoidFragments = [
+        DirSep & ".DS_Store", # macOS directory metadata
+        DirSep & "__MACOSX"   # macOS resource forks
+      ]
+        ## Path fragments to avoid packaging
 
-    # Set the time of every file/directories to be archived to the
-    # deterministic timestamp
+      DefaultPermission = {fpUserRead, fpUserWrite, fpGroupRead, fpOthersRead}
+        ## Permissions applied to files
+      
+      ExecutablePermission = DefaultPermission + {fpUserExec, fpGroupExec, fpOthersExec}
+        ## Permissions applied to executables/directories
+
     for path in walkDirRec(proj, {pcFile, pcDir}, checkDir = true):
       if AvoidFragments.allIt(it notin path):
+        # Normalize permissions so that a reasonably stricter/laxer umask won't
+        # cause undeterminism
+        if fpUserExec in getFilePermissions(path):
+          setFilePermissions(path, ExecutablePermission)
+        else:
+          setFilePermissions(path, DefaultPermission)
+
+        # Set the time of every file/directories to be archived to the
+        # deterministic timestamp
         setLastModificationTime(path, timestamp)
 
     # Collect all files to be archived
