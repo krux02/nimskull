@@ -284,6 +284,10 @@ proc walkDirRecursively(s: var seq[string], root, explicit: string,
         walkDirRecursively(s, f, explicit, allowHtml)
       of pcLinkToDir: discard
 
+  # Sort alphabetically to make sure that the file system ordering has no
+  # bearing on our generators
+  s.sort()
+
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
     if dirExists(p):
@@ -297,6 +301,10 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
           add(s, unixToNativePath(f))
           inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
+
+  # Sort alphabetically to make sure that the file system ordering has no
+  # bearing on our generators
+  s.sort()
 
 proc pathFlags(p: var CfgParser, k, v: string,
                t: var tuple[path, flags: string]) =
