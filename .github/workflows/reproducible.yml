@@ -50,8 +50,9 @@ jobs:
       - name: Install reprotest
         run: |
           sudo apt-get update -qq
-          # This tool is required for archive generation
-          sudo apt-get install -yqq xz-utils
+          # This tool is required for moving /tmp to a larger storage, as
+          # reprotest builds things in /tmp and we can't change that
+          sudo apt-get install -yqq bubblewrap
           # Diffoscope have a /lot/ of optional dependencies, but we don't need
           # all of them
           sudo apt-get install -yqq --no-install-recommends diffoscope
@@ -77,18 +78,35 @@ jobs:
           # Add a guest user for reprotest
           sudo useradd -m guest-builder
 
-          # Disabled kernel variation as it messes with csources architecture
-          # detection.
+          # Clone /tmp to buildtmp
           #
-          # Can be re-enabled once reprotest is >= 0.7.18, where a fix is added
-          # to prevent 32-bit architectures from being selected.
-          reprotest \
-            --vary=domain_host.use_sudo=1 \
-            --vary=user_group.available+=guest-builder:guest-builder \
-            --vary=-kernel \
-            'export XDG_CACHE_HOME=$PWD/build/nimcache \
-              && ${{ matrix.test.command }}' \
-            '${{ matrix.test.pattern }}'
+          # This will serve as a temporary storage on disk for reprotest as
+          # some of our tests generate artifacts upwards of 2GB and can't be
+          # stored in tmpfs
+          sudo cp -aT /tmp /var/tmp/buildtmp
+
+          # Create a new mount namespace, bind `/` for full disk access then
+          # bind the temporary storage as `/tmp` so that reprotest makes use of
+          # it.
+          bwrap \
+            --dev-bind / / \
+            --dev-bind /var/tmp/buildtmp /tmp \
+            -- \
+            reprotest \
+              --vary=domain_host.use_sudo=1 \
+              --vary=user_group.available+=guest-builder:guest-builder \
+              --vary=-kernel \
+              'export XDG_CACHE_HOME=$PWD/build/nimcache \
+                && ${{ matrix.test.command }}' \
+              '${{ matrix.test.pattern }}'
+
+            # NOTE:
+            #
+            # Disabled kernel variation as it messes with csources architecture
+            # detection.
+            #
+            # Can be re-enabled once reprotest is >= 0.7.18, where a fix is added
+            # to prevent 32-bit architectures from being selected.
 
   passed:
     name: All reproducibility tests passed
