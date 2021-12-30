@@ -857,7 +857,7 @@ proc archiveDist(c: var ConfigData) =
       let fileList = proj & ".files.txt"
       writeFile(fileList, paths.join("\p"))
 
-      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList)
+      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList, "-scsUTF-8")
 
     of tarFormats:
       let (tar, kind) = detectTar()
