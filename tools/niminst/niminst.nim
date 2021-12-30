@@ -679,6 +679,15 @@ type
     GNU        ## GNU tar
     Libarchive ## libarchive-based tar utility
 
+  ExternalProgramError = object of CatchableError
+    ## The error used when an external program returned a non-zero exit code
+    exitCode: int
+
+func newExternalProgramError(exitCode: int): ref ExternalProgramError =
+  result = newException(ExternalProgramError):
+    "External program exited with exit code: " & $exitCode
+  result.exitCode = exitCode
+
 proc detectTar(): (string, TarKind) =
   ## Detect the tar utility and its type
   const Candidates = [
@@ -698,6 +707,38 @@ proc detectTar(): (string, TarKind) =
           return (candidate, Libarchive)
     except OSError:
       discard "Ignore errors when the tool is not available"
+
+proc verboseExec(args: varargs[string]): int =
+  ## Print and execute command formed by `args`
+  if args.len == 0:
+    raise newException(ValueError):
+      "No command was provided for execution"
+
+  const ProcessOpts = {poUsePath, poParentStreams, poEchoCmd}
+
+  let p =
+    if args.len > 1:
+      startProcess(
+        args[0],
+        args = args.toOpenArray(1, args.len - 1),
+        options = ProcessOpts
+      )
+    else:
+      startProcess(
+        args[0],
+        options = ProcessOpts
+      )
+
+  defer: close p
+
+  result = p.waitForExit()
+
+proc checkedExec(args: varargs[string]) =
+  ## Same as `verboseExec`, but raise `ExternalProgramError` if the external
+  ## program fails.
+  let exitCode = verboseExec(args)
+  if exitCode != 0:
+    raise newExternalProgramError(exitCode)
 
 proc archiveDist(c: var ConfigData) =
   ## Create the archive distribution
@@ -816,45 +857,41 @@ proc archiveDist(c: var ConfigData) =
       let fileList = proj & ".files.txt"
       writeFile(fileList, paths.join("\p"))
 
-      if execShellCmd("7z a -tzip $1.zip @$2" % [proj, quoteShell(fileList)]) != 0:
-        quit("External program failed (zip)")
+      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList)
 
     of tarFormats:
       let (tar, kind) = detectTar()
 
       # The command to create a tar archive
-      var tarCmd = tar
+      var tarCmd = @[tar]
 
-      tarCmd.add " "
       tarCmd.add:
         # The parameters to make tar generates deterministic archives, per
         #
         # https://reproducible-builds.org/docs/archives/
         case kind
         of Invalid:
-          echo "The tar utility does not exist or is a version not supported by this utility"
-          return
+          raise newException(CatchableError):
+            "The tar utility does not exist or is a version not supported by this utility"
         of GNU:
-          quoteShellCommand ["--owner=0", "--group=0", "--numeric-owner", "--format=gnu"]
+          @["--owner=0", "--group=0", "--numeric-owner", "--format=gnu"]
         of Libarchive:
-          quoteShellCommand ["--uid=0", "--gid=0", "--numeric-owner", "--format=gnutar"]
+          @["--uid=0", "--gid=0", "--numeric-owner", "--format=gnutar"]
 
       # Add creation action
-      tarCmd.add " -cf"
+      tarCmd.add "-cf"
 
       # Add target file name
-      tarCmd.add " " & proj & ".tar"
+      tarCmd.add proj & ".tar"
 
       # Add the list of files
-      tarCmd.add " " & quoteShellCommand(paths)
+      tarCmd.add paths
 
-      if execShellCmd(tarCmd) != 0:
-        quit("External program failed")
+      checkedExec(tarCmd)
 
       case c.format
       of TarXz:
-        if execShellCmd("xz -9f $1.tar" % proj) != 0:
-          quit("External program failed")
+        checkedExec("xz", "-9f", proj & ".tar")
       else:
         discard
 
