@@ -879,7 +879,17 @@ proc archiveDist(c: var ConfigData) =
       let fileList = proj & ".files.txt"
       writeFile(fileList, paths.join("\p"))
 
-      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList, "-scsUTF-8")
+      # Set timezone to UTC so that timestamp recorded in the zip file is not
+      # affected by the timezone.
+      putEnv("TZ", "UTC")
+
+      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList,
+                  # Treat the file list as UTF-8 regardless of locale
+                  "-scsUTF-8",
+                  # Don't store extra time data
+                  "-mtc=off",
+                  # Use UTF-8 for archive filenames
+                  "-mcu")
 
     of tarFormats:
       let (tar, kind) = detectTar()
