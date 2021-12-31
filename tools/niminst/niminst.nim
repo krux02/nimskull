@@ -877,6 +877,7 @@ proc archiveDist(c: var ConfigData) =
       # Write the list into a file then pass it to 7-zip since Windows has a
       # very small command line length limit
       let fileList = proj & ".files.txt"
+      echo paths
       writeFile(fileList, paths.join("\p"))
 
       # Set timezone to UTC so that timestamp recorded in the zip file is not
