@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           # This tool is required for archive generation
-          sudo apt-get install -yqq xz-utils
+          sudo apt-get install -yqq libarchive-tools
           # Diffoscope have a /lot/ of optional dependencies, but we don't need
           # all of them
           sudo apt-get install -yqq --no-install-recommends diffoscope
