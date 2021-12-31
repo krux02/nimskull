@@ -741,10 +741,30 @@ proc verboseExec(args: varargs[string]): int =
 
   result = p.waitForExit()
 
+proc shellExec(cmd: string): int =
+  ## Print and execute shell command `cmd`
+  if cmd.len == 0:
+    raise newException(ValueError):
+      "No command was provided for execution"
+
+  let p = startProcess(cmd,
+                       options = {poParentStreams, poEchoCmd, poEvalCommand})
+
+  defer: close p
+
+  result = p.waitForExit()
+
 proc checkedExec(args: varargs[string]) =
   ## Same as `verboseExec`, but raise `ExternalProgramError` if the external
   ## program fails.
   let exitCode = verboseExec(args)
+  if exitCode != 0:
+    raise newExternalProgramError(exitCode)
+
+proc checkedShellExec(cmd: string) =
+  ## Same as `shellExec`, but raise `ExternalProgramError` if the external
+  ## program fails.
+  let exitCode = shellExec(cmd)
   if exitCode != 0:
     raise newExternalProgramError(exitCode)
 
@@ -872,20 +892,28 @@ proc archiveDist(c: var ConfigData) =
     # has no bearing on the creation of the archive.
     paths.sort()
 
-    # Write the list into a file then supply that file to archival programs to
-    # avoid exceeding command line capacity
-    let fileList = proj & ".files.txt"
-    writeFile(fileList, paths.join("\0"))
-
     case c.format
     of Zip:
+      # Write the list into a file then supply that file to archival programs to
+      # avoid exceeding command line capacity
+      let fileList = proj & ".files.txt"
+      writeFile(fileList, paths.join("\n"))
+
       # Set timezone to UTC so that timestamp recorded in the zip file is not
       # affected by the timezone.
       putEnv("TZ", "UTC")
 
-      checkedExec("bsdtar", "--format=zip", "--null", "-nT", fileList, "-cf", proj & ".zip")
+      # TODO: Get rid of this hack once osproc gain the ability to modify just
+      # one portion of the child standard I/O.
+      checkedShellExec:
+        "zip -nw -X -@ $1 < $2" % [quoteShell(proj & ".zip"), quoteShell(fileList)]
 
     of tarFormats:
+      # Write the list into a file then supply that file to archival programs to
+      # avoid exceeding command line capacity
+      let fileList = proj & ".files.txt"
+      writeFile(fileList, paths.join("\0"))
+
       let (tar, kind) = detectTar()
 
       # The command to create a tar archive
