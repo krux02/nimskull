@@ -872,25 +872,18 @@ proc archiveDist(c: var ConfigData) =
     # has no bearing on the creation of the archive.
     paths.sort()
 
+    # Write the list into a file then supply that file to archival programs to
+    # avoid exceeding command line capacity
+    let fileList = proj & ".files.txt"
+    writeFile(fileList, paths.join("\0"))
+
     case c.format
     of Zip:
-      # Write the list into a file then pass it to 7-zip since Windows has a
-      # very small command line length limit
-      let fileList = proj & ".files.txt"
-      echo paths
-      writeFile(fileList, paths.join("\p"))
-
       # Set timezone to UTC so that timestamp recorded in the zip file is not
       # affected by the timezone.
       putEnv("TZ", "UTC")
 
-      checkedExec("7z", "a", "-tzip", proj & ".zip", "@" & fileList,
-                  # Treat the file list as UTF-8 regardless of locale
-                  "-scsUTF-8",
-                  # Don't store extra time data
-                  "-mtc=off",
-                  # Use UTF-8 for archive filenames
-                  "-mcu")
+      checkedExec("bsdtar", "--format=zip", "--null", "-nT", fileList, "-cf", proj & ".zip")
 
     of tarFormats:
       let (tar, kind) = detectTar()
@@ -918,7 +911,7 @@ proc archiveDist(c: var ConfigData) =
       tarCmd.add proj & ".tar"
 
       # Add the list of files
-      tarCmd.add paths
+      tarCmd.add ["--no-recursion", "--null", "-T", fileList]
 
       checkedExec(tarCmd)
 
