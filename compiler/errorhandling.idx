@@ -1,0 +1,19 @@
+ErrorKind	errorhandling.html#ErrorKind	errorhandling: ErrorKind	
+InstantiationInfo	errorhandling.html#InstantiationInfo	errorhandling: InstantiationInfo	
+errorSubNode	errorhandling.html#errorSubNode,PNode	errorhandling: errorSubNode(n: PNode): PNode	
+wrongNodePos	errorhandling.html#wrongNodePos	errorhandling: wrongNodePos	
+errorKindPos	errorhandling.html#errorKindPos	errorhandling: errorKindPos	
+compilerInfoPos	errorhandling.html#compilerInfoPos	errorhandling: compilerInfoPos	
+firstArgPos	errorhandling.html#firstArgPos	errorhandling: firstArgPos	
+errorKind	errorhandling.html#errorKind,PNode	errorhandling: errorKind(e: PNode): ErrorKind	
+compilerInstInfo	errorhandling.html#compilerInstInfo,PNode	errorhandling: compilerInstInfo(e: PNode): InstantiationInfo	
+newError	errorhandling.html#newError.t,PNode,ErrorKind,varargs[PNode]	errorhandling: newError(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode	
+newFatal	errorhandling.html#newFatal.t,PNode,varargs[PNode]	errorhandling: newFatal(wrongNode: PNode; args: varargs[PNode]): PNode	
+newError	errorhandling.html#newError.t,PNode,string	errorhandling: newError(wrongNode: PNode; msg: string): PNode	
+newCustomErrorMsgAndNode	errorhandling.html#newCustomErrorMsgAndNode.t,PNode,string	errorhandling: newCustomErrorMsgAndNode(wrongNode: PNode; msg: string): PNode	
+wrapErrorInSubTree	errorhandling.html#wrapErrorInSubTree,PNode	errorhandling: wrapErrorInSubTree(wrongNodeContainer: PNode): PNode	
+wrapIfErrorInSubTree	errorhandling.html#wrapIfErrorInSubTree,PNode	errorhandling: wrapIfErrorInSubTree(wrongNodeContainer: PNode): PNode	
+walkErrors	errorhandling.html#walkErrors.i,ConfigRef,PNode	errorhandling: walkErrors(config: ConfigRef; n: PNode): PNode	
+ifErrorWalkErrors	errorhandling.html#ifErrorWalkErrors.i,ConfigRef,PNode	errorhandling: ifErrorWalkErrors(config: ConfigRef; n: PNode): PNode	
+anyErrorsWalk	errorhandling.html#anyErrorsWalk.i,ConfigRef,PNode	errorhandling: anyErrorsWalk(config: ConfigRef; n: PNode): PNode	
+Future Considerations/Improvements:	errorhandling.html#future-considerationsslashimprovementscolon	 Future Considerations/Improvements:	

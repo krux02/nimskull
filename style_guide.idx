@@ -1,0 +1,19 @@
+Nimskull coding style	style_guide.html
+Introduction	style_guide.html#introduction	 Introduction	
+Style Guidelines	style_guide.html#style-guidelines	 Style Guidelines	
+Spacing and Whitespace Conventions	style_guide.html#style-guidelines-spacing-and-whitespace-conventions	  Spacing and Whitespace Conventions	
+Control flow constructs	style_guide.html#style-guidelines-control-flow-constructs	  Control flow constructs	
+Naming Conventions	style_guide.html#style-guidelines-naming-conventions	  Naming Conventions	
+Coding Conventions	style_guide.html#style-guidelines-coding-conventions	  Coding Conventions	
+Conventions for multi-line statements and expressions	style_guide.html#style-guidelines-conventions-for-multiminusline-statements-and-expressions	  Conventions for multi-line statements and expressions	
+Miscellaneous	style_guide.html#style-guidelines-miscellaneous	  Miscellaneous	
+Best practices	style_guide.html#best-practices	 Best practices	
+Avoid primitive types for an API	style_guide.html#best-practices-avoid-primitive-types-for-an-api	  Avoid primitive types for an API	
+Define needs prefix	style_guide.html#best-practices-define-needs-prefix	  Define needs prefix	
+No implicit bool	style_guide.html#best-practices-no-implicit-bool	  No implicit bool	
+Desing for method call syntax	style_guide.html#best-practices-desing-for-method-call-syntax	  Desing for method call syntax	
+Avoid quit	style_guide.html#best-practices-avoid-quit	  Avoid quit	
+Use doAssert in tests	style_guide.html#best-practices-use-doassert-in-tests	  Use <tt class="docutils literal"><span class="pre">doAssert</span></tt> in tests	
+Use assert in runnable examples	style_guide.html#best-practices-use-assert-in-runnable-examples	  Use assert in runnable examples	
+Delegate printing	style_guide.html#best-practices-delegate-printing	  Delegate printing	
+Use Option	style_guide.html#best-practices-use-option	  Use <tt class="docutils literal"><span class="pre">Option</span></tt>	
